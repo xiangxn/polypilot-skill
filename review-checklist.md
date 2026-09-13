@@ -1,12 +1,22 @@
 # PolyPilot Strategy Review Checklist
 
+## Framework contracts
+
+- [ ] Does `Subscribes()` list exactly the event types the strategy acts on?
+- [ ] Does `Needs()` list every port the strategy dereferences, and no port it does not?
+- [ ] Are all `Dependencies` fields used actually declared in `Needs()`?
+- [ ] Is nothing from `Decision` / `*feature.Set` retained across calls?
+- [ ] Does the strategy avoid mutating slices read from `Facts`?
+- [ ] Are all four callbacks (`OnUpdate`/`OnTick`/`OnExecution`/`OnPositionExpiring`) free of blocking calls?
+
 ## Correctness
 
 - [ ] Does the strategy react only to intended event types?
 - [ ] Are event payload types checked?
-- [ ] Are required Observation fields present?
-- [ ] Are dynamic Features accessed with checked type assertions?
+- [ ] Are Feature reads done via `feature.Key.Get` with `ok == false` handled (no silent zero-substitution)?
+- [ ] Is any new derived value added as a `feature.Key` + Provider rather than a new `Observation` field?
 - [ ] Are token IDs treated explicitly?
+- [ ] Are `Tokens` iterated `0..TokenCount-1` (not as a map)?
 - [ ] Are time-left boundaries correct?
 - [ ] Is market lifecycle handled correctly?
 - [ ] Is there any future-data dependency?
@@ -35,24 +45,25 @@
 - [ ] Strategy does not duplicate global Risk limits without reason.
 - [ ] Strategy-specific sizing is explicit.
 - [ ] Strategy handles rejected intents where required.
+- [ ] Strategy does not assume all-or-nothing submission — risk filters per intent, so part of a batch can be rejected.
 
 ## Concurrency
 
-- [ ] Strategy-local shared state is protected.
-- [ ] No unsafe concurrent map access.
-- [ ] No assumptions that all callbacks occur on one goroutine.
-- [ ] No blocking operation in a latency-sensitive callback without justification.
+- [ ] Strategy-local state is touched only from the framework callbacks (which are serialized on the event-loop goroutine), or is explicitly protected.
+- [ ] No unsafe concurrent map access if the strategy spawns goroutines or shares state with anything outside the callbacks.
+- [ ] No blocking operation in a callback — the event loop is shared with every other strategy.
 
 ## Tests
 
 - [ ] Entry test.
 - [ ] Exit test.
 - [ ] Negative test.
-- [ ] Missing feature test.
+- [ ] Missing feature test (`ok == false`, not zero).
 - [ ] Boundary test.
 - [ ] Position test.
 - [ ] Intent field assertions.
 - [ ] Race test.
+- [ ] Guards mutation-checked (delete the guarded line, confirm the test fails).
 
 ## Final commands
 

@@ -6,10 +6,12 @@
 
 1. Read `main.go`.
 2. Read `runtime/types.go`.
-3. Read `strategy/strategy.go`.
-4. Inspect relevant tests.
-5. Inspect existing indicators/features.
-6. Identify the exact event(s) that should drive the strategy.
+3. Read `runtime/providers.go` (startup validation: which ports and features the engine guarantees).
+4. Read `feature/keys.go` (which derived values are available to read).
+5. Read `strategy/strategy.go`.
+6. Inspect relevant tests.
+7. Inspect existing indicators/features.
+8. Identify the exact event(s) that should drive the strategy.
 
 ### Phase 2 — Design
 
@@ -50,7 +52,7 @@ Prefer a small Strategy implementation.
 
 Do not modify Engine, Executor, or State unless the requested feature cannot be expressed through the existing contract.
 
-Use checked type assertions.
+Read features through their typed keys and handle `ok == false`; check event payload type assertions before use.
 
 Use existing helpers.
 
@@ -75,9 +77,15 @@ go test -race ./...
 
 ### Phase 5 — Review
 
-Check:
+Check `review-checklist.md` in full. The short form:
 
 ```text
+Contracts
+[ ] Subscribes() lists exactly the handled event types
+[ ] Needs() lists exactly the ports the strategy dereferences
+[ ] Nothing from Decision/Facts retained across calls
+[ ] No blocking call inside a callback
+
 Architecture
 [ ] Strategy only decides
 [ ] Risk remains authoritative
@@ -85,9 +93,9 @@ Architecture
 [ ] State remains authoritative
 
 Data
+[ ] Feature reads use Key.Get with ok == false handled
 [ ] No future data
-[ ] No unchecked feature assertions
-[ ] No accidental map-order dependency
+[ ] No accidental ordering dependency on Tokens (use Tokens[0]=up, [1]=down)
 
 Orders
 [ ] Correct Action
@@ -98,7 +106,7 @@ Orders
 [ ] CANCEL uses OrderID
 
 Concurrency
-[ ] Shared state protected
+[ ] Local state protected if used outside callbacks
 [ ] No unsafe goroutine assumptions
 
 Testing
@@ -125,26 +133,31 @@ Do not rewrite a working strategy merely to make it look cleaner unless the user
 4. Add edge-case tests.
 5. Keep strategy code dependent on the indicator, not its internal implementation.
 
-## Adding a probability feature
+## Adding a feature
 
-Use the probability layer when the feature is a shared market observation.
+Use a feature (not an `Observation` field) when the derived value is shared across strategies.
 
-Verify that the feature is populated consistently after market reset and during updates.
+1. Declare the key in `feature/keys.go`: `var MySignal = Define[float64]("strategy.my_signal")`. Declare it exactly once — two declarations produce two unrelated slots.
+2. Have a `runtime.Provider` write it in `Update(ev, facts)` (pure writing: no events, no orders).
+3. Declare `Provides()` / `DependsOn()` so the engine can validate and topologically order providers. A duplicate key, an unprovided dependency, or a cycle is a startup failure.
+4. Register the provider in `main.go`.
 
-The feature should be safe for concurrent snapshot reads.
+Verify the feature is populated consistently after market reset and during updates, and that a never-written key reads back as `ok == false` rather than zero.
+
+Providers run on the event-loop goroutine and share a per-event `*feature.Set`, so the set needs no locking. Any state a provider keeps across events (buffers, tickers started in `Init`) does.
 
 ## Debugging
 
 When a strategy behaves unexpectedly:
 
-1. Inspect event type.
-2. Inspect Observation timestamp and MarketID.
-3. Inspect TimeLeftSec.
-4. Inspect Tokens.
-5. Inspect Features.
-6. Inspect state snapshot.
-7. Inspect generated OrderIntent.
-8. Inspect Risk rejection.
+1. Inspect event type (`d.Event.Type`).
+2. Inspect `d.At` and `d.Obs.MarketID`.
+3. Inspect `d.Obs.TimeLeftSec`.
+4. Inspect `d.Obs.Tokens` / `TokenCount` (are both legs priced? is the book present at all?).
+5. Inspect `d.Facts` (are the keys you read actually `ok == true`? a missing key silently skips your logic).
+6. Inspect the state snapshot.
+7. Inspect the generated OrderIntent.
+8. Inspect Risk rejections (per intent, with reasons).
 9. Inspect execution events.
 10. Inspect reconciliation effects.
 
