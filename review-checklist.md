@@ -47,6 +47,7 @@
 - [ ] Strategy handles rejected intents where required.
 - [ ] Strategy does not assume all-or-nothing submission — risk filters per intent, so part of a batch can be rejected.
 - [ ] Sizing accounts for held inventory consuming `max_exposure_per_market` headroom (and for `MERGE` releasing it).
+- [ ] Cancel-and-replace is reported as one batch (exposure and open-order caps both measure the post-batch stock), and no BUY counts on a same-batch cancel to fund it (balance is measured at the peak).
 
 ## Concurrency
 

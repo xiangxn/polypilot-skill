@@ -179,6 +179,8 @@ for _, orderID := range BuildCancelIntent(tokenID, d.State.Orders) {
 }
 ```
 
+To **replace** a quote, return the cancel and the new PLACE in the same batch. Exposure and open-order caps are measured after the batch lands, so the cancelled order's notional is not counted twice — re-quoting does not need headroom for two quotes at once. Two caveats: the cancel must name an order the snapshot actually holds (a stale or invented `OrderID` frees nothing), and it frees exposure/slots but **not** balance — placements reach the exchange before cancels, so a BUY must be payable from the available balance as reported.
+
 ## Using a port
 
 Declare the port, then use it. The engine guarantees a declared port is non-nil (it refuses to start otherwise):

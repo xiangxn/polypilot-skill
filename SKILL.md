@@ -252,7 +252,7 @@ Do not duplicate global risk rules in every Strategy unless the rule is specific
 
 Framework-level risk includes daily loss, market exposure, slippage, open orders, and market cooldown. Note that **slippage applies only to taker orders** (`MARKET_FAK`/`MARKET_FOK`) and is direction-aware; resting GTC limit orders are not slippage-checked. Strategy code should not bypass these controls.
 
-Market exposure is per market (`conditionId`) and counts both resting order notional and the inventory you already hold (marked to mid) — so a position you are carrying consumes headroom for new orders, while `MERGE` gives headroom back. See `architecture.md` → Risk model for the exact formula.
+Market exposure is per market (`conditionId`) and counts both resting order notional and the inventory you already hold (marked to mid) — so a position you are carrying consumes headroom for new orders, while `MERGE` gives headroom back. A `CANCEL` sent in the same batch as its replacement gives headroom back too: exposure and open-order count are both measured **after** the batch lands, so re-quoting is a one-batch operation rather than something that needs the cap headroom of two quotes. Balance is the exception — it is measured **before** the batch's cancels land, so a BUY must be payable from the reported available balance. See `architecture.md` → Risk model for the exact formula.
 
 ## Market/event handling
 

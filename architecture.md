@@ -223,7 +223,7 @@ The current framework includes protections for:
 - maximum daily loss
 - maximum exposure per market — per `marketID` (= `conditionId`), resting order notional **plus** held inventory
 - maximum slippage — **taker orders only** (`MARKET_FAK`/`MARKET_FOK`), direction-aware: a BUY only counts when priced above mid, a SELL only when below
-- maximum open orders
+- maximum open orders — post-batch count, so same-batch cancels free slots
 - market cooldown
 
 Exposure in detail, because it decides whether your next order still fits:
@@ -232,6 +232,8 @@ Exposure in detail, because it decides whether your next order still fits:
 - **held inventory**: `Available × midPrices[tokenID]`, i.e. marked to market. `Reserved` tokens are not counted twice — the resting SELL above already carries them.
 - **unvaluable inventory is skipped, not guessed**: a token with no mid, or a position the framework could not attribute to a market, contributes nothing.
 - **`SPLIT` consumes** `size` USDC of the cap; **`MERGE` releases** it (it burns a token pair and returns `size` USDC). A market pressed against its cap can therefore still be unwound, and a batch that merges before re-quoting nets out rather than double-counting.
+- **a `CANCEL` releases it too**, when the cancel travels in the same batch as the replacement. The two caps that measure a *stock* — exposure and open orders — compare the state **after the batch lands**, so cancel-then-re-place in one batch is a replace, not a double count; otherwise a market using more than half its cap could never re-quote. The credit comes from the snapshot only: an `OrderID` that is unknown, stale, or belongs to another market frees nothing, and a repeated cancel frees nothing twice. A cancel that fails leaves its reservation in the ledger, so the next batch counts it again — over-commitment lasts one in-flight batch and self-corrects.
+- **balance is the exception: it is measured at the peak.** The executor submits placements *before* cancels, so a BUY still has to be payable from the snapshot's available balance even when the same batch is cancelling a resting BUY that holds that money.
 
 Resting GTC limit orders are not slippage-checked, because "limit buy below mid" is not slippage.
 
