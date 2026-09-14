@@ -218,9 +218,11 @@ A Strategy must return intents. It must not call the Executor directly and must 
 Use the supplied `state.Snapshot` for current orders and positions:
 
 ```go
-pos, ok := d.State.Position.Tokens[tokenID] // state.TokenPosition{Available, Reserved, ...}
+pos, ok := d.State.Position.Tokens[tokenID] // state.TokenPosition{Available, Reserved, MarketID, ...}
 openOrders := d.State.Orders                // orderID -> state.OrderReservation
 ```
+
+`TokenPosition.MarketID` is the `conditionId` the token belongs to — use it to group inventory by market. The framework fills it in from fills, startup restore, and reconciliation; it can still be empty for a position it could not attribute, so do not branch on it being set.
 
 Do not build a second authoritative order/position ledger inside a Strategy.
 
@@ -249,6 +251,8 @@ It returns the approved subset and the per-intent rejections. Intent-level rejec
 Do not duplicate global risk rules in every Strategy unless the rule is specifically part of the strategy's alpha logic.
 
 Framework-level risk includes daily loss, market exposure, slippage, open orders, and market cooldown. Note that **slippage applies only to taker orders** (`MARKET_FAK`/`MARKET_FOK`) and is direction-aware; resting GTC limit orders are not slippage-checked. Strategy code should not bypass these controls.
+
+Market exposure is per market (`conditionId`) and counts both resting order notional and the inventory you already hold (marked to mid) — so a position you are carrying consumes headroom for new orders, while `MERGE` gives headroom back. See `architecture.md` → Risk model for the exact formula.
 
 ## Market/event handling
 

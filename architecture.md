@@ -221,10 +221,17 @@ Risk filters **per intent**: the approved subset is returned along with the reje
 The current framework includes protections for:
 
 - maximum daily loss
-- maximum exposure per market
+- maximum exposure per market — per `marketID` (= `conditionId`), resting order notional **plus** held inventory
 - maximum slippage — **taker orders only** (`MARKET_FAK`/`MARKET_FOK`), direction-aware: a BUY only counts when priced above mid, a SELL only when below
 - maximum open orders
 - market cooldown
+
+Exposure in detail, because it decides whether your next order still fits:
+
+- **resting orders**, per order: a BUY counts the `price × size` USDC it locks; a SELL locks tokens and counts its notional `price × remainingSize` — do not read a SELL's `Reserved` as USDC, it is a token count.
+- **held inventory**: `Available × midPrices[tokenID]`, i.e. marked to market. `Reserved` tokens are not counted twice — the resting SELL above already carries them.
+- **unvaluable inventory is skipped, not guessed**: a token with no mid, or a position the framework could not attribute to a market, contributes nothing.
+- **`SPLIT` consumes** `size` USDC of the cap; **`MERGE` releases** it (it burns a token pair and returns `size` USDC). A market pressed against its cap can therefore still be unwound, and a batch that merges before re-quoting nets out rather than double-counting.
 
 Resting GTC limit orders are not slippage-checked, because "limit buy below mid" is not slippage.
 

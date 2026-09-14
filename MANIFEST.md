@@ -3,7 +3,8 @@
 Generated for `github.com/xiangxn/PolyPilot`.
 
 Source basis:
-- repository branch: `master` (commit `5087db4`, merged 2026-09-14 from `stage2-behavior-fixes`)
+- repository branch: `master` (commit `4e9d3e2`, 2026-09-15)
+- the risk-model notes (`SKILL.md` → Risk boundary, `architecture.md` → Risk model, Risk checklist item) and the `state.TokenPosition` note were updated in place for `8c2d1d0` + `4e9d3e2`; the rest of the Skill still reflects the `5087db4` regeneration
 - repository URL: https://github.com/xiangxn/PolyPilot
 - primary usage example: `main.go`
 - primary runtime contracts: `runtime/types.go`

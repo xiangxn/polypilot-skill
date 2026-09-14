@@ -46,6 +46,7 @@
 - [ ] Strategy-specific sizing is explicit.
 - [ ] Strategy handles rejected intents where required.
 - [ ] Strategy does not assume all-or-nothing submission — risk filters per intent, so part of a batch can be rejected.
+- [ ] Sizing accounts for held inventory consuming `max_exposure_per_market` headroom (and for `MERGE` releasing it).
 
 ## Concurrency
 
